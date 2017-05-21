@@ -1,14 +1,10 @@
 #!/usr/bin/python
 #----------------------------------------------------------------
-# Routing for OSM data
+# Need to add quick description what it does
 #
 #------------------------------------------------------
 # Usage as library:
-#   datastore = loadOsm('transport type')
-#   router = Router(datastore)
-#   result, route = router.doRoute(node1, node2)
-#
-# (where transport is cycle, foot, car, etc...)
+# TODO: How to use it
 #------------------------------------------------------
 # Copyright 2017 - Anna Cibis, Marcin Pastecki
 # The goal of this is to calculate distance between two
