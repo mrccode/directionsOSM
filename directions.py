@@ -1,36 +1,72 @@
 #!/usr/bin/python
-#----------------------------------------------------------------
+# ----------------------------------------------------------------
 # Need to add quick description what it does
 #
-#------------------------------------------------------
+# ------------------------------------------------------
 # Usage as library:
 # TODO: How to use it
-#------------------------------------------------------
+# ------------------------------------------------------
 # Copyright 2017 - Anna Cibis, Marcin Pastecki
 # The goal of this is to calculate distance between two
 # locations using OSM data instead of Google Directions
 # API.
-#------------------------------------------------------
+# ------------------------------------------------------
 from pyroutelib2.route import Router
 from pyroutelib2.loadOsm import LoadOsm
 import csv
 import pandas as pd
+import math
+
+# Set line distance of an area within which walking distance should be calculated
+# This should be in kilometers
+within_distance_global = 1
 
 
-def load_data(localefile, poifile):
-    with open(localefile, 'r') as csvfile:
+# point1 and point2 are dictionaries wit two keys each:
+# lon and lat
+def distance_between_coordinates(point1, point2):
+    point2['lat'] = float(point2['lat'])
+    point2['lon'] = float(point2['lon'])
+    point1['lat'] = float(point1['lat'])
+    point1['lon'] = float(point1['lon'])
+    ky = 40000 / 360
+    kx = math.cos(math.pi * point2['lat'] / 180.0) * ky
+    dx = math.fabs(point2['lon'] - point1['lon']) * kx
+    dy = math.fabs(point2['lat'] - point1['lat']) * ky
+    return dx * dx + dy * dy
+
+
+def load_data(objectsfile, poifile):
+    with open(objectsfile, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
-        locale = pd.DataFrame(list(reader))
-    locale['closestStop'] = 0
-    locale['closestStop'] = locale['closestStop'].asobject
+        objects = pd.DataFrame(list(reader))
+    objects['closestStop'] = 0
+    objects['closestStop'] = objects['closestStop'].asobject
 
     with open(poifile, 'r') as csvfile:
         reader = csv.DictReader(csvfile, delimiter=';')
         pois = pd.DataFrame(list(reader))
 
-    return locale, pois
+    return objects, pois
 
-def find_closest_objects(localefile, poifile):
+
+# TODO: This should be done better. Sorting pois around object's
+# TODO: coordinates and limiting them that way may be good idea.
+# This will return list containing coordinates of
+def find_closest_objects(object, pois, within_distance):
+    nearpois = []
+    centerPoint = {
+        'lat': object['lat'],
+        'lon': object['lon'],
+    }
+    for ind, row in pois.iterrows():
+        checkPoint = {
+            'lat': row['lat'],
+            'lon': row['lon'],
+        }
+        if distance_between_coordinates(centerPoint, checkPoint) < within_distance:
+            nearpois.append([pois['lat'], pois['lon']])
+    return nearpois
 
 
 
