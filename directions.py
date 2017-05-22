@@ -79,11 +79,14 @@ def find_pois(objects, pois, within_distance, data, router):
         count += 1
         if count % 100 == 0:
             print(count)
+        node1 = data.findNode(float(row['lat']), float(row['lon']))
         for object in closest_objects:
-            node1 = data.findNode(float(row['lat']), float(row['lon']))
-            node2 = data.findNode(object[0], object[1])
-
-            result, route, routedistance = router.doRoute(node1, node2)
+            if (float(row['lat']) == object[0] and float(row['lon']) == object[1]):
+                result = 'success'
+                routedistance = 0
+            else:
+                node2 = data.findNode(object[0], object[1])
+                result, route, routedistance = router.doRoute(node1, node2)
             if result == 'success':
                 print("Walking distance: %s" % routedistance)
                 distances.append(routedistance)
@@ -136,6 +139,15 @@ bn2 = {
     'lon': 18.986522
 }
 
+cn1 = {
+    'lat': 50.1980765,
+    'lon': 18.983124
+}
+
+cn2 = {
+    'lat': 50.1972386,
+    'lon': 18.9815431
+}
 def testRun(n1, n2):
     # Test suite - do a little bit of easy routing in Katowice
     data = LoadOsm("foot")
@@ -155,8 +167,8 @@ def testRun(n1, n2):
 
 
 if __name__ == "__main__":
-    objects, pois = load_data(objectsfile = "/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale.csv",
-                              poifile = "/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv")
+    objects, pois = load_data(objectsfile="/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale.csv",
+                              poifile="/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv")
 
     data = LoadOsm("foot")
     router = Router(data)
@@ -166,3 +178,4 @@ if __name__ == "__main__":
     #testRun(n1, n2)
     #testRun(an1, an2)
     #testRun(bn1, bn2)
+    #testRun(cn1, cn2)

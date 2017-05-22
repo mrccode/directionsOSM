@@ -71,18 +71,19 @@ class Router(object):
       for i, weight in self.data.routing[start].items():
         self.addToQueue(start,i, blankQueueItem, weight)
     except KeyError:
-      return('no_such_node',[])
+      return('no_such_node',[],None)
 
     # Limit for how long it will search
     count = 0
-    while count < 1000000:
+    # modified from 1000000 to 20000
+    while count < 20000:
       count = count + 1
       try:
         nextItem = self.queue.pop(0)
       except IndexError:
         # Queue is empty: failed
         # TODO: return partial route?
-        return('no_route',[])
+        return('no_route',[],None)
       x = nextItem['end']
       if x in closed:
         continue
@@ -105,7 +106,7 @@ class Router(object):
       except KeyError:
         pass
     else:
-      return('gave_up',[])
+      return('gave_up',[],None)
   
   def addToQueue(self,start,end, queueSoFar, weight = 1):
     """Add another potential route to the queue"""
