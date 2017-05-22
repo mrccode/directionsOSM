@@ -65,8 +65,31 @@ def find_closest_objects(object, pois, within_distance):
             'lon': row['lon'],
         }
         if distance_between_coordinates(centerPoint, checkPoint) < within_distance:
-            nearpois.append([pois['lat'], pois['lon']])
+            nearpois.append([checkPoint['lat'], checkPoint['lon']])
     return nearpois
+
+
+#
+# objects, pois are of dataframe type
+def find_pois(objects, pois, within_distance, data, router):
+    count = 0
+    for ind, row in objects.iterrows():
+        closest_objects = find_closest_objects(row, pois, within_distance)
+        distances = []
+        count += 1
+        if count % 100 == 0:
+            print(count)
+        for object in closest_objects:
+            node1 = data.findNode(float(row['lat']), float(row['lon']))
+            node2 = data.findNode(object[0], object[1])
+
+            result, route, routedistance = router.doRoute(node1, node2)
+            if result == 'success':
+                print("Walking distance: %s" % routedistance)
+                distances.append(routedistance)
+            else:
+                print("Failed (%s)" % result)
+        print("Number of POIs: %i, closest POI: %d" % (len(distances), min(distances)))
 
 
 
@@ -132,6 +155,14 @@ def testRun(n1, n2):
 
 
 if __name__ == "__main__":
-    testRun(n1, n2)
-    testRun(an1, an2)
-    testRun(bn1, bn2)
+    objects, pois = load_data(objectsfile = "/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale.csv",
+                              poifile = "/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv")
+
+    data = LoadOsm("foot")
+    router = Router(data)
+    find_pois(objects=objects, pois=pois, within_distance=1, data=data, router=router)
+
+
+    #testRun(n1, n2)
+    #testRun(an1, an2)
+    #testRun(bn1, bn2)
