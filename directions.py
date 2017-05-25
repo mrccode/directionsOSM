@@ -16,6 +16,9 @@ from pyroutelib2.loadOsm import LoadOsm
 import csv
 import pandas as pd
 import math
+from multiprocessing import Process
+from multiprocessing import Queue
+import os
 
 # Set line distance of an area within which walking distance should be calculated
 # This should be in kilometers
@@ -71,8 +74,9 @@ def find_closest_objects(object, pois, within_distance):
 
 #
 # objects, pois are of dataframe type
-def find_pois(objects, pois, within_distance, data, router):
+def find_pois(objects, pois, within_distance, data, router, out_q):
     count = 0
+    rows = []
     for ind, row in objects.iterrows():
         closest_objects = find_closest_objects(row, pois, within_distance)
         distances = []
@@ -92,8 +96,12 @@ def find_pois(objects, pois, within_distance, data, router):
                 distances.append(routedistance)
             else:
                 print("Failed (%s)" % result)
-        print("Number of POIs: %i, closest POI: %d" % (len(distances), min(distances)))
-
+        print("Number of POIs: %i, closest POI: %s" % (len(distances), min(distances)))
+        row['NumberOfPOIs'] = len(distances)
+        row['DistanceToClosestPoi'] = min(distances)
+        out_q.put(row)
+        rows.append(row)
+    return rows
 
 
 
@@ -166,13 +174,73 @@ def testRun(n1, n2):
         print("Failed (%s)" % result)
 
 
+def reader(queue):
+    # Read from the queue
+    while True:
+        msg = queue.get()
+        print('msg: %s' % msg)
+        if (msg == 'DONE'):
+            break
+
+def test(n, out_q):
+    result = n*n*n
+    out_q.put(result)
+
+
 if __name__ == "__main__":
-    objects, pois = load_data(objectsfile="/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale.csv",
+    objects, pois = load_data(objectsfile="/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale-male.csv",
                               poifile="/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv")
 
     data = LoadOsm("foot")
     router = Router(data)
-    find_pois(objects=objects, pois=pois, within_distance=1, data=data, router=router)
+    #queue = Queue()
+
+    usable_cpu_number = len(os.sched_getaffinity(0))
+    out_q = Queue()
+    procs = []
+
+    reader_p = Process(target=reader, args=((out_q),))
+    reader_p.daemon = True
+    reader_p.start()
+
+    print(len(objects))
+
+    if len(objects) > usable_cpu_number:
+        current_row = -1
+        for i in range(usable_cpu_number):
+            current_row += 1
+            last_row = int(current_row + len(objects) / 4)
+            current_row = last_row
+            current_df = objects[current_row:last_row]
+            p = Process(name='Process %d' % i, target=find_pois, args=(current_df, pois, 1, data, router, out_q,))
+            #p = Process(name='Process %d' % i, target=test, args=(i,out_q,))
+            procs.append(p)
+            p.start()
+            print(p.name)
+
+    for p in procs:
+        p.join()
+
+    reader_p.join()
+
+    #print("from q: %s" % out_q.get())
+    #print(pois[10:20])
+    #
+
+
+    #p = Process(target=find_pois, args=(objects, pois, 1, data, router,))
+    #p.start()
+    #p.join()
+
+    #result = find_pois(objects=objects, pois=pois, within_distance=1, data=data, router=router)
+
+    #print(result)
+
+    #queue.put('DONE')
+    #reader(queue=queue)
+    #reader_p.join()
+
+
 
 
     #testRun(n1, n2)
