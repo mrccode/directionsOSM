@@ -40,16 +40,10 @@ def distance_between_coordinates(point1, point2):
 
 
 def load_data(objectsfile, poifile):
-    with open(objectsfile, 'r') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        objects = pd.DataFrame(list(reader))
+    objects = pd.read_csv(filepath_or_buffer=objectsfile, sep=';')
     objects['closestStop'] = 0
     objects['closestStop'] = objects['closestStop'].asobject
-
-    with open(poifile, 'r') as csvfile:
-        reader = csv.DictReader(csvfile, delimiter=';')
-        pois = pd.DataFrame(list(reader))
-
+    pois = pd.read_csv(filepath_or_buffer=poifile, sep=';')
     return objects, pois
 
 
