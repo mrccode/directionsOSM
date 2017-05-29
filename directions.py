@@ -18,7 +18,9 @@ import pandas as pd
 import math
 from multiprocessing import Process
 from multiprocessing import Queue
+from multiprocessing import Pool
 import os
+import numpy as np
 
 # Set line distance of an area within which walking distance should be calculated
 # This should be in kilometers
@@ -39,8 +41,8 @@ def distance_between_coordinates(point1, point2):
     return dx * dx + dy * dy
 
 
-def load_data(objectsfile, poifile):
-    objects = pd.read_csv(filepath_or_buffer=objectsfile, sep=';')
+def load_data(objectsfile, poifile, chunksize):
+    objects = pd.read_csv(filepath_or_buffer=objectsfile, sep=';', chunksize=chunksize)
     objects['closestStop'] = 0
     objects['closestStop'] = objects['closestStop'].asobject
     pois = pd.read_csv(filepath_or_buffer=poifile, sep=';')
@@ -68,7 +70,7 @@ def find_closest_objects(object, pois, within_distance):
 
 #
 # objects, pois are of dataframe type
-def find_pois(objects, pois, within_distance, data, router, out_q):
+def find_pois(objects, pois, within_distance, data, router):
     count = 0
     rows = []
     for ind, row in objects.iterrows():
@@ -93,7 +95,6 @@ def find_pois(objects, pois, within_distance, data, router, out_q):
         print("Number of POIs: %i, closest POI: %s" % (len(distances), min(distances)))
         row['NumberOfPOIs'] = len(distances)
         row['DistanceToClosestPoi'] = min(distances)
-        out_q.put(row)
         rows.append(row)
     return rows
 
@@ -167,55 +168,87 @@ def testRun(n1, n2):
     else:
         print("Failed (%s)" % result)
 
+def add_distance(df):
+    
 
-def reader(queue):
-    # Read from the queue
-    while True:
-        msg = queue.get()
-        print('msg: %s' % msg)
-        if (msg == 'DONE'):
-            break
 
-def test(n, out_q):
-    result = n*n*n
-    out_q.put(result)
+def process_frame(df):
+    return len(df)
 
 
 if __name__ == "__main__":
-    objects, pois = load_data(objectsfile="/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale-male.csv",
-                              poifile="/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv")
 
-    data = LoadOsm("foot")
-    router = Router(data)
+    objects, pois = load_data(objectsfile="/home/mapastec/Documents/studia/KoloNaukowe/dane/lokale-male.csv",
+                              poifile="/home/mapastec/Documents/studia/KoloNaukowe/dane/szkolykur.csv", chunksize=100)
+
+#def find_pois(objects, pois, within_distance, data, router):
+
+within_distance = 1
+data = LoadOsm("foot")
+router = Router(data)
+
+    #reader = pd.read_table(LARGE_FILE, sep=';')
+    #pool = Pool(4)
+
+    #funclist = []
+
+    #res = pool.apply_async(process_frame, args=(reader))
+    #print(res.get())
+
+#    for df in reader:
+#       f = pool.apply_async(process_frame, args=([df], 3))
+#        funclist.append(f)
+
+#    result = 0
+#    for f in funclist:
+#        result += f.get(timeout=10)  # timeout in 10 seconds
+
+#    print("There are %d rows of data" % (result))
+
+
+#    dfm = pd.DataFrame(np.random.randint(0, 100, size=(1000, 4)), columns=list('ABCD'))
+
+#    out_q = Queue()
+
+#    data = LoadOsm("foot")
+#    router = Router(data)
     #queue = Queue()
 
-    usable_cpu_number = len(os.sched_getaffinity(0))
-    out_q = Queue()
-    procs = []
+#    usable_cpu_number = len(os.sched_getaffinity(0))
 
-    reader_p = Process(target=reader, args=((out_q),))
-    reader_p.daemon = True
-    reader_p.start()
+#    pool = Pool(usable_cpu_number)
 
-    print(len(objects))
+#    funclist = []
+#    for df in dfm:
+#        f = pool.apply_async(test, (df, out_q),)
+#        funclist.append(f)
 
-    if len(objects) > usable_cpu_number:
-        current_row = -1
-        for i in range(usable_cpu_number):
-            current_row += 1
-            last_row = int(current_row + len(objects) / 4)
-            current_row = last_row
-            current_df = objects[current_row:last_row]
-            p = Process(name='Process %d' % i, target=find_pois, args=(current_df, pois, 1, data, router, out_q,))
-            #p = Process(name='Process %d' % i, target=test, args=(i,out_q,))
-            procs.append(p)
-            p.start()
-            print(p.name)
 
-    for p in procs:
-        p.join()
+#    procs = []
 
-    reader_p.join()
+#    reader_p = Process(target=reader, args=((out_q),))
+#    reader_p.daemon = True
+#    reader_p.start()
+
+#    print(len(objects))
+
+#    if len(objects) > usable_cpu_number:
+#        current_row = -1
+#        for i in range(usable_cpu_number):
+#            current_row += 1
+#            last_row = int(current_row + len(objects) / 4)
+#            current_row = last_row
+#            current_df = objects[current_row:last_row]
+#            p = Process(name='Process %d' % i, target=find_pois, args=(current_df, pois, 1, data, router, out_q,))
+#            #p = Process(name='Process %d' % i, target=test, args=(i,out_q,))
+#            procs.append(p)
+#            p.start()
+#            print(p.name)
+
+#    for p in procs:
+#        p.join()
+
+#    reader_p.join()
 
     #print("from q: %s" % out_q.get())
     #print(pois[10:20])
