@@ -38,9 +38,9 @@ def distance_between_coordinates(point1, point2):
     return dx * dx + dy * dy
 
 
-def load_data(objectsfile, poifile, sep):
-    _objects = pd.read_csv(filepath_or_buffer=objectsfile, sep=sep)
-    _pois = pd.read_csv(filepath_or_buffer=poifile, sep=sep)
+def load_data(objectsfile, poifile, sep1, sep2):
+    _objects = pd.read_csv(filepath_or_buffer=objectsfile, sep=sep1)
+    _pois = pd.read_csv(filepath_or_buffer=poifile, sep=sep2)
     return _objects, _pois
 
 
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     objects, pois = load_data(objectsfile="%slokale-male.csv" %folder,
                               poifile="%sszkolykur.csv" %folder,
-                              sep=';')
+                              sep1=',', sep2=';')
     within_distance = 1
     data = LoadOsm("foot")
     router = Router(data)
