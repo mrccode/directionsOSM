@@ -27,3 +27,9 @@ def multiply_columns(data):
 iris = parallelize_dataframe(iris, multiply_columns)
 
 print(iris.head())
+
+mydict = {'name': 8484}
+
+k, v = mydict.items()[0]
+
+print("k: %s, v: %s" %(k, v))
