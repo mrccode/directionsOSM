@@ -16,7 +16,7 @@ from pyroutelib2.loadOsm import LoadOsm
 import csv
 import pandas as pd
 import math
-from multiprocessing import Pool, Queue, Process
+from multiprocessing import Pool, Pipe, Process, Lock
 import numpy as np
 
 # Set line distance of an area within which walking distance should be calculated
@@ -60,7 +60,7 @@ def find_closest_objects(centerPoint, pois, within_distance):
 
 #
 # objects, pois are of dataframe type
-def find_pois(centerPoint, pois, within_distance, data, router, fprow, queue):
+def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
     closest_objects = find_closest_objects(centerPoint, pois, within_distance)
     distances = []
     node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
@@ -79,7 +79,7 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow, queue):
     if len(distances) > 0:
         fprow['NumberOfPOIs'] = len(distances)
         fprow['DistanceToClosesPoi'] = min(distances)
-        queue.put(fprow)
+        pipe_.send(fprow)
         return (len(distances), min(distances))
     else:
         return None
@@ -98,7 +98,7 @@ def add_distance(df):
                                                                        data=data,
                                                                        router=router,
                                                                        fprow=row_,
-                                                                       queue=queue
+                                                                       pipe_=input_p
                                                                    )
                                                              }, axis=1)
     return df
@@ -113,35 +113,29 @@ def parallelize_dataframe(df, func):
     return df
 
 
-def reader(pipe):
-    output_p, input_p = pipe
+def reader(pipeAndLock):
+    output_p, input_p, lock = pipeAndLock
     input_p.close()
+    rowscount = 0
+    rows = []
     while True:
         try:
             msg = output_p.recv()
+            rows.append(msg)
+            rowscount += 1
+            if rowscount == 5:
+                lock.acquire()
+                with open("output.csv", "a") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(rows)
+                    del rows[:]
+                    rowscount = 0
+                lock.release()
         except EOFError:
+            writer = csv.writer(f)
+            writer.writerows(rows)
             break
 
-
-def reader(queue):
-    rowscount = 0
-    rows = []
-    ## Read from the queue
-    while True:
-        msg = queue.get()
-        if msg == 'DONE':
-            with open("output.csv", "wb") as f:
-                writer = csv.writer(f)
-                writer.writerows(rows)
-                break
-        rows.append(msg)
-        rowscount += 1
-        if (rowscount == 100):
-            with open("output.csv", "wb") as f:
-                writer = csv.writer(f)
-                writer.writerows(rows)
-                del rows[:]
-                rowscount = 0
 
 if __name__ == "__main__":
 
@@ -156,15 +150,15 @@ if __name__ == "__main__":
     within_distance = 1
     data = LoadOsm("foot")
     router = Router(data)
-    queue = Queue()
+    output_p, input_p = Pipe()
+    lock = Lock()
 
-    reader_p = Process(target=reader, args=((queue),))
-    reader_p.daemon = True
+    reader_p = Process(target=reader, args=((output_p, input_p, lock),))
     reader_p.start()
+    output_p.close()
 
     outputdf = parallelize_dataframe(objects, add_distance)
 
-    queue.put('DONE')
     print(outputdf.head())
     reader_p.join()
     outputdf.to_csv('outputdf.csv', sep=';')
