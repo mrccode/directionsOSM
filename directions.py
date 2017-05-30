@@ -60,7 +60,7 @@ def find_closest_objects(centerPoint, pois, within_distance):
 
 #
 # objects, pois are of dataframe type
-def find_pois(centerPoint, pois, within_distance, data, router, fprow):
+def find_pois(centerPoint, pois, within_distance, data, router, fprow, queue):
     closest_objects = find_closest_objects(centerPoint, pois, within_distance)
     distances = []
     node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
@@ -77,9 +77,9 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow):
         else:
             print("Failed (%s)" % foundroute)
     if len(distances) > 0:
-        #fprow['NumberOfPOIs'] = len(distances)
-        #fprow['DistanceToClosesPoi'] = min(distances)
-        #queue.put(fprow)
+        fprow['NumberOfPOIs'] = len(distances)
+        fprow['DistanceToClosesPoi'] = min(distances)
+        queue.put(fprow)
         return (len(distances), min(distances))
     else:
         return None
@@ -97,8 +97,8 @@ def add_distance(df):
                                                                        within_distance=within_distance,
                                                                        data=data,
                                                                        router=router,
-                                                                       fprow=row_
-                                                                       #queue=queue
+                                                                       fprow=row_,
+                                                                       queue=queue
                                                                    )
                                                              }, axis=1)
     return df
@@ -112,12 +112,28 @@ def parallelize_dataframe(df, func):
     pool.join()
     return df
 
+
+def reader(pipe):
+    output_p, input_p = pipe
+    input_p.close()
+    while True:
+        try:
+            msg = output_p.recv()
+        except EOFError:
+            break
+
+
 def reader(queue):
     rowscount = 0
     rows = []
     ## Read from the queue
     while True:
         msg = queue.get()
+        if msg == 'DONE':
+            with open("output.csv", "wb") as f:
+                writer = csv.writer(f)
+                writer.writerows(rows)
+                break
         rows.append(msg)
         rowscount += 1
         if (rowscount == 100):
@@ -134,21 +150,21 @@ if __name__ == "__main__":
 
     folder = "/home/mapastec/Documents/studia/KoloNaukowe/dane/"
 
-    objects, pois = load_data(objectsfile="%slokale-male.csv" %folder,
+    objects, pois = load_data(objectsfile="%sremaster_lokale.csv" %folder,
                               poifile="%sszkolykur.csv" %folder,
                               sep1=',', sep2=';')
     within_distance = 1
     data = LoadOsm("foot")
     router = Router(data)
-    #queue = Queue()
+    queue = Queue()
 
-    #reader_p = Process(target=reader, args=((queue),))
-    #reader_p.daemon = True
-    #reader_p.start()
+    reader_p = Process(target=reader, args=((queue),))
+    reader_p.daemon = True
+    reader_p.start()
 
     outputdf = parallelize_dataframe(objects, add_distance)
 
-    #queue.put('DONE')
+    queue.put('DONE')
     print(outputdf.head())
-    #reader_p.join()
+    reader_p.join()
     outputdf.to_csv('outputdf.csv', sep=';')
