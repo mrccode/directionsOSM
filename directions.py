@@ -58,21 +58,20 @@ def find_closest_objects(centerPoint, pois, within_distance):
             nearpois.append([checkPoint['lat'], checkPoint['lon']])
     return nearpois
 
+
 #
 # objects, pois are of dataframe type
-def find_pois(centerPoint, pois, within_distance, fprow, pipe_):
+def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
     closest_objects = find_closest_objects(centerPoint, pois, within_distance)
     distances = []
-    data_ = LoadOsm("foot")
-    router_ = Router(data_)
-    node1 = data_.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
+    node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
     for object_ in closest_objects:
         if (float(centerPoint['lat']) == object_[0] and float(centerPoint['lon']) == object_[1]):
             foundroute = 'success'
             routedistance = 0
         else:
-            node2 = data_.findNode(object_[0], object_[1])
-            foundroute, route, routedistance = router_.doRoute(node1, node2)
+            node2 = data.findNode(object_[0], object_[1])
+            foundroute, route, routedistance = router.doRoute(node1, node2)
         if foundroute == 'success':
             print("Walking distance: %s" % routedistance)
             distances.append(routedistance)
@@ -97,6 +96,8 @@ def add_distance(df):
                                    },
                                    pois=pois,
                                    within_distance=within_distance,
+                                   data=data,
+                                   router=router,
                                    fprow=row_,
                                    pipe_=input_p
                                )
@@ -150,6 +151,8 @@ if __name__ == "__main__":
                               poifile="%sszkolykur.csv" %folder,
                               sep1=',', sep2=';')
     within_distance = 1
+    data = LoadOsm("foot")
+    router = Router(data)
     output_p, input_p = Pipe()
     lock = Lock()
 
