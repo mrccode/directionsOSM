@@ -1,3 +1,5 @@
 cache/*
 __pycache__/*
 pyroutelib2/__pycache__/*
+outputdf.csv
+./*.csv
