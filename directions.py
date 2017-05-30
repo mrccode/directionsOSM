@@ -86,21 +86,23 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
 
 
 def add_distance(df):
-    df['NumberOfPOIsAndDistanceToClosestPoi'] = df.apply(lambda row_:
-                                                             {
-                                                                   find_pois(
-                                                                       {
-                                                                           'lat': row_['lat'],
-                                                                           'lon': row_['lon'],
-                                                                       },
-                                                                       pois=pois,
-                                                                       within_distance=within_distance,
-                                                                       data=data,
-                                                                       router=router,
-                                                                       fprow=row_,
-                                                                       pipe_=input_p
-                                                                   )
-                                                             }, axis=1)
+    answer = df.apply(lambda row_:
+                         {
+                               find_pois(
+                                   {
+                                       'lat': row_['lat'],
+                                       'lon': row_['lon'],
+                                   },
+                                   pois=pois,
+                                   within_distance=within_distance,
+                                   data=data,
+                                   router=router,
+                                   fprow=row_,
+                                   pipe_=input_p
+                               )
+                         }, axis=1)
+    if answer:
+        df['NumberOfPOIsAndDistanceToClosestPoi'] = answer
     return df
 
 
