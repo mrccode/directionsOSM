@@ -64,25 +64,25 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
     closest_objects = find_closest_objects(centerPoint, pois, within_distance)
     distances = []
     node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
-    for object in closest_objects:
-        if (float(centerPoint['lat']) == object[0] and float(centerPoint['lon']) == object[1]):
+    for object_ in closest_objects:
+        if (float(centerPoint['lat']) == object_[0] and float(centerPoint['lon']) == object_[1]):
             foundroute = 'success'
             routedistance = 0
         else:
-            node2 = data.findNode(object[0], object[1])
+            node2 = data.findNode(object_[0], object_[1])
             foundroute, route, routedistance = router.doRoute(node1, node2)
         if foundroute == 'success':
             print("Walking distance: %s" % routedistance)
             distances.append(routedistance)
         else:
             print("Failed (%s)" % foundroute)
-    if len(distances) > 0:
+    if len(distances) > 0 and min(distances):
         fprow['NumberOfPOIs'] = len(distances)
         fprow['DistanceToClosesPoi'] = min(distances)
         pipe_.send(fprow)
         return (len(distances), min(distances))
     else:
-        return None
+        return (0, 666)
 
 
 def add_distance(df):
