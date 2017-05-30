@@ -18,6 +18,7 @@ import pandas as pd
 import math
 from multiprocessing import Pool, Pipe, Process, Lock
 import numpy as np
+from functools import partial
 
 # Set line distance of an area within which walking distance should be calculated
 # This should be in kilometers
@@ -86,25 +87,25 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
         return (0, 666)
 
 
-def add_distance(df):
-    answer = df.apply(lambda row_:
+def add_distance(df_, pois_, within_distance_, data_, router_, pipe_):
+    answer = df_.apply(lambda row_:
                          {
                                find_pois(
                                    {
                                        'lat': row_['lat'],
                                        'lon': row_['lon'],
                                    },
-                                   pois=pois,
-                                   within_distance=within_distance,
-                                   data=data,
-                                   router=router,
+                                   pois=pois_,
+                                   within_distance=within_distance_,
+                                   data=data_,
+                                   router=router_,
                                    fprow=row_,
-                                   pipe_=input_p
+                                   pipe_=pipe_
                                )
                          }, axis=1)
     if answer:
-        df['NumberOfPOIsAndDistanceToClosestPoi'] = answer
-    return df
+        df_['NumberOfPOIsAndDistanceToClosestPoi'] = answer
+    return df_
 
 
 def parallelize_dataframe(df, func):
@@ -160,7 +161,10 @@ if __name__ == "__main__":
     reader_p.start()
     output_p.close()
 
-    outputdf = parallelize_dataframe(objects, add_distance)
+    partialAddDistance = partial(add_distance, pois_=pois, within_distance_=within_distance,
+                                 data_=data, router_=router, pipe_=input_p)
+
+    outputdf = parallelize_dataframe(objects, partialAddDistance)
 
     print(outputdf.head())
     reader_p.join()
