@@ -50,60 +50,73 @@ def load_data(objectsfile, poifile, sep1, sep2):
 # This will return list containing coordinates of
 def find_closest_objects(centerPoint, pois, within_distance):
     nearpois = []
+    distances = []
     for ind, row in pois.iterrows():
         checkPoint = {
-            'lat': row['lat'],
-            'lon': row['lon'],
+            'lat': float(row['lat']),
+            'lon': float(row['lon']),
         }
-        if distance_between_coordinates(centerPoint, checkPoint) < within_distance:
+        #print("CheckPoint: %s" %checkPoint)
+        distance_ = distance_between_coordinates(centerPoint, checkPoint)
+        if distance_ < within_distance:
             nearpois.append([checkPoint['lat'], checkPoint['lon']])
-    return nearpois
+            distances.append(distance_)
+    return nearpois, distances
 
 
 #
 # objects, pois are of dataframe type
-def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
-    closest_objects = find_closest_objects(centerPoint, pois, within_distance)
-    distances = []
-    node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
-    for object_ in closest_objects:
-        if (float(centerPoint['lat']) == object_[0] and float(centerPoint['lon']) == object_[1]):
-            foundroute = 'success'
-            routedistance = 0
-        else:
-            node2 = data.findNode(object_[0], object_[1])
-            foundroute, route, routedistance = router.doRoute(node1, node2)
-        if foundroute == 'success':
-            print("Walking distance: %s" % routedistance)
-            distances.append(routedistance)
-        else:
-            print("Failed (%s)" % foundroute)
-    if len(distances) > 0 and min(distances):
-        fprow['NumberOfPOIs'] = len(distances)
-        fprow['DistanceToClosesPoi'] = min(distances)
+def find_pois(pois, within_distance, fprow, pipe_):
+    centerPoint = {
+        'lat': float(fprow['lat']),
+        'lon': float(fprow['lon']),
+    }
+    #print("CenterPoint: %s" %centerPoint)
+    closest_objects, simpledistances = find_closest_objects(centerPoint, pois, within_distance)
+    #distances = []
+    #node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
+    #for object_ in closest_objects:
+    #    if (float(centerPoint['lat']) == object_[0] and float(centerPoint['lon']) == object_[1]):
+    #        foundroute = 'success'
+    #        routedistance = 0
+    #    else:
+    #        node2 = data.findNode(object_[0], object_[1])
+    #        foundroute, route, routedistance = router.doRoute(node1, node2)
+    #    if foundroute == 'success':
+    #        print("Walking distance: %s" % routedistance)
+    #        distances.append(routedistance)
+    #    else:
+    #        print("Failed (%s)" % foundroute)
+    #if len(distances) > 0 and min(distances):
+    #    fprow['NumberOfPOIs'] = len(distances)
+    #    fprow['DistanceToClosesPoi'] = min(distances)
+    #    pipe_.send(fprow)
+    #    return (len(distances), min(distances))
+    #else:
+    #    return (0, 666)
+    if len(closest_objects) > 0 and len(simpledistances) > 0:
+        print("centerpoint: %s, number: %s, min: %s" % (centerPoint, len(simpledistances), min(simpledistances)))
+        fprow['NumberOfPOIs'] = len(simpledistances)
+        fprow['DistanceToClosesPoi'] = min(simpledistances)
         pipe_.send(fprow)
-        return "%s %s" %(len(distances), min(distances))
-    else:
-        return "0 666"
+        return "%s %s" % (len(simpledistances), min(simpledistances))
+    return"0 666"
+
 
 
 def add_distance(df_, pois_, within_distance_, data_, router_, pipe_):
     df_['NumberOfPOIsAndDistanceToClosestPoi'] = df_.apply(lambda row_:
+    #answer = df_.apply(lambda row_:
                                                            find_pois(
-                                                               {
-                                                                   'lat': row_['lat'],
-                                                                   'lon': row_['lon'],
-                                                               },
                                                                pois=pois_,
                                                                within_distance=within_distance_,
-                                                               data=data_,
-                                                               router=router_,
+                                                               #data=data_,
+                                                               #router=router_,
                                                                fprow=row_,
                                                                pipe_=pipe_
-                                                           ),
-                                                           axis=1)
+                                                           ), axis=1)
+    #print("answer type: %s, answer: %s" % (type(answer), answer))
     return df_
-
 
 def parallelize_dataframe(df, func):
     df_split = np.array_split(df, num_partitions)
@@ -140,7 +153,7 @@ def reader(pipeAndLock):
 
 if __name__ == "__main__":
 
-    num_partitions = 10  # number of partitions to split dataframe
+    num_partitions = 16  # number of partitions to split dataframe
     num_cores = 4  # number of cores on your machine
 
     folder = "/home/mapastec/Documents/studia/KoloNaukowe/dane/"
