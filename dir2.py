@@ -106,7 +106,6 @@ def find_pois(pois, within_distance, fprow, pipe_):
 
 def add_distance(df_, pois_, within_distance_, data_, router_, pipe_):
     df_['NumberOfPOIsAndDistanceToClosestPoi'] = df_.apply(lambda row_:
-    #answer = df_.apply(lambda row_:
                                                            find_pois(
                                                                pois=pois_,
                                                                within_distance=within_distance_,
@@ -115,7 +114,6 @@ def add_distance(df_, pois_, within_distance_, data_, router_, pipe_):
                                                                fprow=row_,
                                                                pipe_=pipe_
                                                            ), axis=1)
-    #print("answer type: %s, answer: %s" % (type(answer), answer))
     return df_
 
 def parallelize_dataframe(df, func):
@@ -177,5 +175,7 @@ if __name__ == "__main__":
     outputdf = parallelize_dataframe(objects, partialAddDistance)
 
     print(outputdf.head())
-    reader_p.join()
+
     outputdf.to_csv('outputdf.csv', sep=';')
+    input_p.close()
+    reader_p.join()

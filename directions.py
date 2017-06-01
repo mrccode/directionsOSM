@@ -61,13 +61,17 @@ def find_closest_objects(centerPoint, pois, within_distance):
 
 
 #
-# objects, pois are of dataframe type
-def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
-    closest_objects = find_closest_objects(centerPoint, pois, within_distance)
+# pois is dataframe
+def find_pois(pois, within_distance, data, router, fprow, pipe_):
+    centerpoint = {
+        'lat': float(fprow['lat']),
+        'lon': float(fprow['lon']),
+    }
+    closest_objects = find_closest_objects(centerpoint, pois, within_distance)
     distances = []
-    node1 = data.findNode(float(centerPoint['lat']), float(centerPoint['lon']))
+    node1 = data.findNode(float(centerpoint['lat']), float(centerpoint['lon']))
     for object_ in closest_objects:
-        if (float(centerPoint['lat']) == object_[0] and float(centerPoint['lon']) == object_[1]):
+        if float(centerpoint['lat']) == object_[0] and float(centerpoint['lon']) == object_[1]:
             foundroute = 'success'
             routedistance = 0
         else:
@@ -82,26 +86,23 @@ def find_pois(centerPoint, pois, within_distance, data, router, fprow, pipe_):
         fprow['NumberOfPOIs'] = len(distances)
         fprow['DistanceToClosesPoi'] = min(distances)
         pipe_.send(fprow)
-        return "%s %s" %(len(distances), min(distances))
+        return "%s %s" % (len(distances), min(distances))
     else:
         return "0 666"
 
 
-def add_distance(df_, pois_, within_distance_, data_, router_, pipe_):
+def add_distance(df_, pois_, within_distance_, pipe_):
+    data_ = LoadOsm("foot")
+    router_ = Router(data_)
     df_['NumberOfPOIsAndDistanceToClosestPoi'] = df_.apply(lambda row_:
                                                            find_pois(
-                                                               {
-                                                                   'lat': row_['lat'],
-                                                                   'lon': row_['lon'],
-                                                               },
                                                                pois=pois_,
                                                                within_distance=within_distance_,
                                                                data=data_,
                                                                router=router_,
                                                                fprow=row_,
                                                                pipe_=pipe_
-                                                           ),
-                                                           axis=1)
+                                                           ), axis=1)
     return df_
 
 
@@ -149,8 +150,8 @@ if __name__ == "__main__":
                               poifile="%sszkolykur.csv" %folder,
                               sep1=',', sep2=';')
     within_distance = 1
-    data = LoadOsm("foot")
-    router = Router(data)
+#    data = LoadOsm("foot")
+#    router = Router(data)
     output_p, input_p = Pipe()
     lock = Lock()
 
@@ -159,10 +160,10 @@ if __name__ == "__main__":
     output_p.close()
 
     partialAddDistance = partial(add_distance, pois_=pois, within_distance_=within_distance,
-                                 data_=data, router_=router, pipe_=input_p)
+                                 pipe_=input_p)
 
     outputdf = parallelize_dataframe(objects, partialAddDistance)
 
     print(outputdf.head())
-    reader_p.join()
     outputdf.to_csv('outputdf.csv', sep=';')
+    reader_p.join()
