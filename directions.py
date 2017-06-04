@@ -141,8 +141,8 @@ def reader(pipeAndLock):
 
 if __name__ == "__main__":
 
-    num_partitions = 10  # number of partitions to split dataframe
-    num_cores = 4  # number of cores on your machine
+    num_partitions = 2  # number of partitions to split dataframe
+    num_cores = 1  # number of cores on your machine
 
     folder = "/home/mapastec/Documents/studia/KoloNaukowe/dane/"
 
@@ -165,5 +165,5 @@ if __name__ == "__main__":
     outputdf = parallelize_dataframe(objects, partialAddDistance)
 
     print(outputdf.head())
-    outputdf.to_csv('outputdf.csv', sep=';')
+    outputdf.to_csv('outputszkolydf.csv', sep=';')
     reader_p.join()
