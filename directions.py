@@ -20,10 +20,6 @@ from multiprocessing import Pool, Pipe, Process, Lock
 import numpy as np
 from functools import partial
 
-# Set line distance of an area within which walking distance should be calculated
-# This should be in kilometers
-within_distance_global = 1
-
 
 # point1 and point2 are dictionaries wit two keys each:
 # lon and lat
@@ -78,7 +74,8 @@ def find_pois(pois, within_distance, data, router, fprow, pipe_):
             node2 = data.findNode(object_[0], object_[1])
             foundroute, route, routedistance = router.doRoute(node1, node2)
         if foundroute == 'success':
-            print("Walking distance: %s" % routedistance)
+            print("Walking distance between: %s %s and %s %s is %s" % (centerpoint['lat'], centerpoint['lon'],
+                                                                       object_[0], object_[1], routedistance))
             distances.append(routedistance)
         else:
             print("Failed (%s)" % foundroute)
@@ -117,7 +114,7 @@ def parallelize_dataframe(df, func):
 
 def reader(pipeAndLock):
     output_p, input_p, lock = pipeAndLock
-    input_p.close()
+    #input_p.close()
     rowscount = 0
     rows = []
     while True:
@@ -141,8 +138,8 @@ def reader(pipeAndLock):
 
 if __name__ == "__main__":
 
-    num_partitions = 2  # number of partitions to split dataframe
-    num_cores = 1  # number of cores on your machine
+    num_partitions = 4  # number of partitions to split dataframe
+    num_cores = 4  # number of cores on your machine
 
     folder = "/home/mapastec/Documents/studia/KoloNaukowe/dane/"
 
@@ -150,19 +147,19 @@ if __name__ == "__main__":
                               poifile="%sszkolykur.csv" %folder,
                               sep1=',', sep2=';')
     within_distance = 1
-#    data = LoadOsm("foot")
-#    router = Router(data)
     output_p, input_p = Pipe()
     lock = Lock()
 
     reader_p = Process(target=reader, args=((output_p, input_p, lock),))
     reader_p.start()
-    output_p.close()
 
     partialAddDistance = partial(add_distance, pois_=pois, within_distance_=within_distance,
                                  pipe_=input_p)
 
     outputdf = parallelize_dataframe(objects, partialAddDistance)
+
+    input_p.close()
+    output_p.close()
 
     print(outputdf.head())
     outputdf.to_csv('outputszkolydf.csv', sep=';')
